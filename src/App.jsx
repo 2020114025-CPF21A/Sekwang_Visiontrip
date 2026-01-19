@@ -80,62 +80,17 @@ const LazyMedia = ({ memory, onClick }) => {
 
 // Modal for Detailed View
 const MemoryModal = ({ memory, onClose }) => {
-    const [loadingProgress, setLoadingProgress] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
-    const [mediaUrl, setMediaUrl] = useState(null);
-
-    useEffect(() => {
-        if (!memory) return;
-
-        const loadMedia = async () => {
-            setIsLoading(true);
-            setLoadingProgress(0);
-            try {
-                const response = await fetch(memory.url);
-                const reader = response.body.getReader();
-                const contentLength = +response.headers.get('Content-Length');
-
-                let receivedLength = 0;
-                let chunks = [];
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    chunks.push(value);
-                    receivedLength += value.length;
-                    if (contentLength) {
-                        setLoadingProgress(Math.round((receivedLength / contentLength) * 100));
-                    }
-                }
-
-                const blob = new Blob(chunks);
-                const url = URL.createObjectURL(blob);
-                setMediaUrl(url);
-            } catch (error) {
-                console.error('Failed to load media:', error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        loadMedia();
-
-        return () => {
-            if (mediaUrl) URL.revokeObjectURL(mediaUrl);
-        };
-    }, [memory]);
+    const isVideo = memory.url.toLowerCase().match(/\.(mp4|webm|mov)$/);
 
     if (!memory) return null;
 
-    const isVideo = memory.url.toLowerCase().match(/\.(mp4|webm|mov)$/);
-
     const handleDownload = () => {
-        const a = document.createElement('a');
-        a.href = mediaUrl || memory.url;
+        const a = document.body.appendChild(document.createElement('a'));
+        a.href = memory.url;
         a.download = memory.pathname.split('/').pop() || 'memory-sekwang';
-        document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
+        a.remove();
     };
 
     return (
@@ -156,27 +111,29 @@ const MemoryModal = ({ memory, onClose }) => {
                 <button className="modal-close" onClick={onClose}><X size={24} /></button>
 
                 <div className="modal-media-container">
-                    {isLoading ? (
+                    {isLoading && (
                         <div className="media-loader-overlay">
-                            <div className="loader-circle-container">
-                                <svg viewBox="0 0 100 100">
-                                    <circle cx="50" cy="50" r="45" className="loader-bg" />
-                                    <circle
-                                        cx="50" cy="50" r="45"
-                                        className="loader-fill"
-                                        style={{ strokeDasharray: 283, strokeDashoffset: 283 - (283 * loadingProgress) / 100 }}
-                                    />
-                                </svg>
-                                <div className="loader-percentage">{loadingProgress}%</div>
-                            </div>
-                            <p>미디어를 불러오는 중입니다...</p>
+                            <Loader2 className="animate-spin" size={48} color="white" />
+                            <p>불러오는 중...</p>
                         </div>
+                    )}
+
+                    {isVideo ? (
+                        <video
+                            src={memory.url}
+                            controls
+                            autoPlay
+                            playsInline
+                            onLoadedData={() => setIsLoading(false)}
+                            style={{ display: isLoading ? 'none' : 'block' }}
+                        />
                     ) : (
-                        isVideo ? (
-                            <video src={mediaUrl} controls autoPlay playsInline />
-                        ) : (
-                            <img src={mediaUrl} alt="Full view" />
-                        )
+                        <img
+                            src={memory.url}
+                            alt="Full view"
+                            onLoad={() => setIsLoading(false)}
+                            style={{ display: isLoading ? 'none' : 'block' }}
+                        />
                     )}
                 </div>
 
