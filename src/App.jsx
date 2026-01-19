@@ -6,6 +6,7 @@ import { upload } from '@vercel/blob/client';
 const MAX_FILE_SIZE = 5000 * 1024 * 1024; // 5GB
 
 function App() {
+    const [activeTab, setActiveTab] = useState('archive'); // Default to archive to see memories first
     const [files, setFiles] = useState([]);
     const [uploading, setUploading] = useState(false);
     const [completed, setCompleted] = useState(false);
@@ -130,7 +131,7 @@ function App() {
                         ...prev,
                         [fileData.id]: { ...prev[fileData.id], status: 'error' }
                     }));
-                    throw new Error(`${fileData.name} 업로드 실패: ${err.message}`);
+                    // Keep going with other files if one fails, but track error
                 }
             }
 
@@ -173,178 +174,204 @@ function App() {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.2 }}
                 >
-                    우리들의 소중한 추억을 공유해 주세요
+                    우리들의 소중한 추억 저장소
                 </motion.p>
             </header>
 
+            <nav className="tab-nav">
+                <button
+                    className={activeTab === 'archive' ? 'active' : ''}
+                    onClick={() => setActiveTab('archive')}
+                >
+                    추억 아카이브
+                </button>
+                <button
+                    className={activeTab === 'upload' ? 'active' : ''}
+                    onClick={() => setActiveTab('upload')}
+                >
+                    추억 업로드
+                </button>
+            </nav>
+
             <main>
-                {/* Slideshow Section */}
-                <section className="slideshow-section">
-                    <AnimatePresence mode="wait">
-                        {loadingMemories ? (
-                            <motion.div
-                                key="loader"
-                                className="slideshow-placeholder"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                            >
-                                <Loader2 className="animate-spin" size={32} />
-                                <p>추억 불러오는 중...</p>
-                            </motion.div>
-                        ) : memories.length > 0 ? (
-                            <motion.div
-                                key={memories[currentMemoryIndex].url}
-                                className="slideshow-item"
-                                initial={{ opacity: 0, scale: 1.1 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                                transition={{ duration: 1.5, ease: "easeInOut" }}
-                            >
-                                {memories[currentMemoryIndex].url.toLowerCase().match(/\.(mp4|webm|mov)$/) ? (
-                                    <video
-                                        src={memories[currentMemoryIndex].url}
-                                        autoPlay
-                                        muted
-                                        loop
-                                        playsInline
-                                    />
-                                ) : (
-                                    <img src={memories[currentMemoryIndex].url} alt="Memory" />
-                                )}
-                                <div className="slideshow-overlay"></div>
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                key="empty"
-                                className="slideshow-placeholder"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                            >
-                                <p>아직 저장된 추억이 없습니다.</p>
-                                <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>첫 번째 추억을 업로드해 보세요!</p>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                    <div className="slideshow-label">
-                        <ImageIcon size={14} style={{ marginRight: 6 }} />
-                        Memories Area
-                    </div>
-                </section>
-
-                {files.length === 0 ? (
-                    <motion.div
-                        className="upload-card"
-                        initial={{ scale: 0.9, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                    >
-                        <div className="upload-icon-wrapper">
-                            <Upload size={32} />
-                        </div>
-                        <div>
-                            <h3>새로운 추억 업로드</h3>
-                            <p style={{ color: '#64748b', marginTop: '0.5rem', fontSize: '0.85rem' }}>
-                                사진이나 영상을 선택해 주세요. (최대 5GB)
-                            </p>
-                        </div>
-                        <button
-                            className="btn-upload"
-                            onClick={() => fileInputRef.current.click()}
-                        >
-                            파일 선택하기
-                        </button>
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleFileChange}
-                            multiple
-                            accept="image/*,video/*"
-                            style={{ display: 'none' }}
-                        />
-                    </motion.div>
-                ) : (
-                    <div style={{ paddingBottom: '120px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h3 style={{ fontWeight: 600 }}>선택된 파일 ({files.length}개)</h3>
-                            {!uploading && (
-                                <button
-                                    onClick={() => fileInputRef.current.click()}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: 'var(--primary)',
-                                        fontWeight: 600,
-                                        fontSize: '0.9rem',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    + 더 추가하기
-                                </button>
-                            )}
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleFileChange}
-                                multiple
-                                accept="image/*,video/*"
-                                style={{ display: 'none' }}
-                            />
-                        </div>
-
-                        <div className="preview-grid">
-                            <AnimatePresence>
-                                {files.map((file) => (
+                {activeTab === 'archive' ? (
+                    <section className="archive-section">
+                        {/* Highlights Slideshow */}
+                        <div className="slideshow-container-mini">
+                            <AnimatePresence mode="wait">
+                                {loadingMemories ? (
+                                    <div className="slideshow-placeholder">
+                                        <Loader2 className="animate-spin" size={24} />
+                                    </div>
+                                ) : memories.length > 0 ? (
                                     <motion.div
-                                        key={file.id}
-                                        className="preview-item"
-                                        layout
-                                        initial={{ opacity: 0, scale: 0.8 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.8 }}
+                                        key={memories[currentMemoryIndex].url}
+                                        className="slideshow-item-mini"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 1 }}
                                     >
-                                        {file.type === 'image' ? (
-                                            <img src={file.url} alt={file.name} />
+                                        {memories[currentMemoryIndex].url.toLowerCase().match(/\.(mp4|webm|mov)$/) ? (
+                                            <video src={memories[currentMemoryIndex].url} autoPlay muted loop playsInline />
                                         ) : (
-                                            <div style={{ width: '100%', height: '100%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                <Film size={32} color="white" />
-                                            </div>
+                                            <img src={memories[currentMemoryIndex].url} alt="Highlight" />
                                         )}
-
-                                        {file.type === 'video' && <div className="video-badge"><Film size={12} style={{ marginRight: 4 }} /> Video</div>}
-
-                                        {!uploading && (
-                                            <button className="btn-remove" onClick={() => removeFile(file.id)}>
-                                                <X size={14} />
-                                            </button>
-                                        )}
-
-                                        {fileStatuses[file.id]?.status === 'uploading' && (
-                                            <div className="item-progress-wrapper">
-                                                <div
-                                                    className="item-progress-bar"
-                                                    style={{ width: `${fileStatuses[file.id].progress}%` }}
-                                                ></div>
-                                            </div>
-                                        )}
-                                        {fileStatuses[file.id]?.status === 'completed' && (
-                                            <div className="item-status-overlay">
-                                                <CheckCircle2 size={24} color="#10b981" />
-                                            </div>
-                                        )}
-                                        {fileStatuses[file.id]?.status === 'error' && (
-                                            <div className="item-status-overlay" style={{ background: 'rgba(239, 68, 68, 0.2)' }}>
-                                                <AlertCircle size={24} color="#ef4444" />
-                                            </div>
-                                        )}
+                                        <div className="slideshow-label-mini">Highlights</div>
                                     </motion.div>
-                                ))}
+                                ) : null}
                             </AnimatePresence>
                         </div>
-                    </div>
+
+                        <div className="archive-grid">
+                            {loadingMemories ? (
+                                Array(6).fill(0).map((_, i) => (
+                                    <div key={i} className="archive-skeleton" />
+                                ))
+                            ) : memories.length > 0 ? (
+                                memories.map((memory, index) => (
+                                    <motion.div
+                                        key={memory.url}
+                                        className="archive-card"
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: index * 0.05 }}
+                                    >
+                                        {memory.url.toLowerCase().match(/\.(mp4|webm|mov)$/) ? (
+                                            <div className="archive-video-wrapper">
+                                                <video src={memory.url} muted playsInline onMouseEnter={e => e.target.play()} onMouseLeave={e => { e.target.pause(); e.target.currentTime = 0; }} />
+                                                <div className="video-icon-tag"><Film size={12} /></div>
+                                            </div>
+                                        ) : (
+                                            <img src={memory.url} alt="Memory" loading="lazy" />
+                                        )}
+                                    </motion.div>
+                                ))
+                            ) : (
+                                <div className="empty-archive">
+                                    <p>아직 저장된 추억이 없습니다.</p>
+                                    <button onClick={() => setActiveTab('upload')}>첫 추억 업로드하기</button>
+                                </div>
+                            )}
+                        </div>
+                    </section>
+                ) : (
+                    <section className="upload-section">
+                        {files.length === 0 ? (
+                            <motion.div
+                                className="upload-card"
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                            >
+                                <div className="upload-icon-wrapper">
+                                    <Upload size={32} />
+                                </div>
+                                <div>
+                                    <h3>새로운 추억 업로드</h3>
+                                    <p style={{ color: '#64748b', marginTop: '0.5rem', fontSize: '0.85rem' }}>
+                                        사진이나 영상을 선택해 주세요. (최대 5GB)
+                                    </p>
+                                </div>
+                                <button
+                                    className="btn-upload"
+                                    onClick={() => fileInputRef.current.click()}
+                                >
+                                    파일 선택하기
+                                </button>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileChange}
+                                    multiple
+                                    accept="image/*,video/*"
+                                    style={{ display: 'none' }}
+                                />
+                            </motion.div>
+                        ) : (
+                            <div style={{ paddingBottom: '120px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                    <h3 style={{ fontWeight: 600 }}>선택된 파일 ({files.length}개)</h3>
+                                    {!uploading && (
+                                        <button
+                                            onClick={() => fileInputRef.current.click()}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                color: 'var(--primary)',
+                                                fontWeight: 600,
+                                                fontSize: '0.9rem',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            + 더 추가하기
+                                        </button>
+                                    )}
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleFileChange}
+                                        multiple
+                                        accept="image/*,video/*"
+                                        style={{ display: 'none' }}
+                                    />
+                                </div>
+
+                                <div className="preview-grid">
+                                    <AnimatePresence>
+                                        {files.map((file) => (
+                                            <motion.div
+                                                key={file.id}
+                                                className="preview-item"
+                                                layout
+                                                initial={{ opacity: 0, scale: 0.8 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                exit={{ opacity: 0, scale: 0.8 }}
+                                            >
+                                                {file.type === 'image' ? (
+                                                    <img src={file.url} alt={file.name} />
+                                                ) : (
+                                                    <div style={{ width: '100%', height: '100%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <Film size={32} color="white" />
+                                                    </div>
+                                                )}
+
+                                                {file.type === 'video' && <div className="video-badge"><Film size={12} style={{ marginRight: 4 }} /> Video</div>}
+
+                                                {!uploading && (
+                                                    <button className="btn-remove" onClick={() => removeFile(file.id)}>
+                                                        <X size={14} />
+                                                    </button>
+                                                )}
+
+                                                {fileStatuses[file.id]?.status === 'uploading' && (
+                                                    <div className="item-progress-wrapper">
+                                                        <div
+                                                            className="item-progress-bar"
+                                                            style={{ width: `${fileStatuses[file.id].progress}%` }}
+                                                        ></div>
+                                                    </div>
+                                                )}
+                                                {fileStatuses[file.id]?.status === 'completed' && (
+                                                    <div className="item-status-overlay">
+                                                        <CheckCircle2 size={24} color="#10b981" />
+                                                    </div>
+                                                )}
+                                                {fileStatuses[file.id]?.status === 'error' && (
+                                                    <div className="item-status-overlay" style={{ background: 'rgba(239, 68, 68, 0.2)' }}>
+                                                        <AlertCircle size={24} color="#ef4444" />
+                                                    </div>
+                                                )}
+                                            </motion.div>
+                                        ))}
+                                    </AnimatePresence>
+                                </div>
+                            </div>
+                        )}
+                    </section>
                 )}
             </main>
 
-            {files.length > 0 && !completed && !uploading && (
+            {activeTab === 'upload' && files.length > 0 && !completed && !uploading && (
                 <div className="footer-actions">
                     <button className="btn-submit" onClick={handleUpload}>
                         {files.length}개의 파일 업로드
