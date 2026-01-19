@@ -69,7 +69,7 @@ const LazyMedia = ({ memory }) => {
 };
 
 function App() {
-    const [activeTab, setActiveTab] = useState('archive'); // Default to archive to see memories first
+    const [activeTab, setActiveTab] = useState('archive');
     const [files, setFiles] = useState([]);
     const [uploading, setUploading] = useState(false);
     const [completed, setCompleted] = useState(false);
@@ -77,6 +77,10 @@ function App() {
     const [memories, setMemories] = useState([]);
     const [currentMemoryIndex, setCurrentMemoryIndex] = useState(0);
     const [loadingMemories, setLoadingMemories] = useState(true);
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 12; // 3 columns * 4 rows
 
     const [fileStatuses, setFileStatuses] = useState({});
     const fileInputRef = useRef(null);
@@ -292,9 +296,11 @@ function App() {
                                     <div key={i} className="archive-skeleton" />
                                 ))
                             ) : memories.length > 0 ? (
-                                memories.map((memory) => (
-                                    <LazyMedia key={memory.url} memory={memory} />
-                                ))
+                                memories
+                                    .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+                                    .map((memory) => (
+                                        <LazyMedia key={memory.url} memory={memory} />
+                                    ))
                             ) : (
                                 <div className="empty-archive">
                                     <p>아직 저장된 추억이 없습니다.</p>
@@ -302,6 +308,66 @@ function App() {
                                 </div>
                             )}
                         </div>
+
+                        {/* Pagination Controls */}
+                        {!loadingMemories && memories.length > ITEMS_PER_PAGE && (
+                            <div className="pagination">
+                                <button
+                                    disabled={currentPage === 1}
+                                    onClick={() => setCurrentPage(1)}
+                                    title="First Page"
+                                >
+                                    {"<<"}
+                                </button>
+                                <button
+                                    disabled={currentPage === 1}
+                                    onClick={() => setCurrentPage(prev => prev - 1)}
+                                    title="Previous Page"
+                                >
+                                    {"<"}
+                                </button>
+
+                                {Array.from({ length: Math.ceil(memories.length / ITEMS_PER_PAGE) }).map((_, i) => {
+                                    const pageNum = i + 1;
+                                    // Basic logic to show limited page numbers if there are too many
+                                    const totalPages = Math.ceil(memories.length / ITEMS_PER_PAGE);
+                                    if (
+                                        totalPages > 7 &&
+                                        pageNum !== 1 &&
+                                        pageNum !== totalPages &&
+                                        Math.abs(pageNum - currentPage) > 2
+                                    ) {
+                                        if (Math.abs(pageNum - currentPage) === 3) return <span key={pageNum}>...</span>;
+                                        return null;
+                                    }
+
+                                    return (
+                                        <button
+                                            key={pageNum}
+                                            className={currentPage === pageNum ? 'active' : ''}
+                                            onClick={() => setCurrentPage(pageNum)}
+                                        >
+                                            {pageNum}
+                                        </button>
+                                    );
+                                })}
+
+                                <button
+                                    disabled={currentPage === Math.ceil(memories.length / ITEMS_PER_PAGE)}
+                                    onClick={() => setCurrentPage(prev => prev + 1)}
+                                    title="Next Page"
+                                >
+                                    {">"}
+                                </button>
+                                <button
+                                    disabled={currentPage === Math.ceil(memories.length / ITEMS_PER_PAGE)}
+                                    onClick={() => setCurrentPage(Math.ceil(memories.length / ITEMS_PER_PAGE))}
+                                    title="Last Page"
+                                >
+                                    {">>"}
+                                </button>
+                            </div>
+                        )}
                     </section>
                 ) : (
                     <section className="upload-section">
