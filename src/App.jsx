@@ -5,6 +5,69 @@ import { upload } from '@vercel/blob/client';
 
 const MAX_FILE_SIZE = 5000 * 1024 * 1024; // 5GB
 
+// Optimization: Lazy Loading Component for Images and Videos
+const LazyMedia = ({ memory }) => {
+    const [isInView, setIsInView] = useState(false);
+    const mediaRef = useRef(null);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setIsInView(true);
+                    observer.disconnect();
+                }
+            },
+            { rootMargin: '200px' } // Load when 200px from viewport
+        );
+
+        if (mediaRef.current) {
+            observer.observe(mediaRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, []);
+
+    const isVideo = memory.url.toLowerCase().match(/\.(mp4|webm|mov)$/);
+
+    return (
+        <motion.div
+            ref={mediaRef}
+            className="archive-card"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+        >
+            {!isInView ? (
+                <div className="archive-skeleton-static" />
+            ) : (
+                isVideo ? (
+                    <div className="archive-video-wrapper">
+                        <video
+                            src={memory.url}
+                            muted
+                            playsInline
+                            preload="none" // Only load metadata/data on interaction
+                            onMouseEnter={e => e.target.play()}
+                            onMouseLeave={e => {
+                                e.target.pause();
+                                e.target.currentTime = 0;
+                            }}
+                        />
+                        <div className="video-icon-tag"><Film size={12} /></div>
+                    </div>
+                ) : (
+                    <img
+                        src={memory.url}
+                        alt="Memory"
+                        loading="lazy"
+                        decoding="async"
+                    />
+                )
+            )}
+        </motion.div>
+    );
+};
+
 function App() {
     const [activeTab, setActiveTab] = useState('archive'); // Default to archive to see memories first
     const [files, setFiles] = useState([]);
@@ -229,23 +292,8 @@ function App() {
                                     <div key={i} className="archive-skeleton" />
                                 ))
                             ) : memories.length > 0 ? (
-                                memories.map((memory, index) => (
-                                    <motion.div
-                                        key={memory.url}
-                                        className="archive-card"
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: index * 0.05 }}
-                                    >
-                                        {memory.url.toLowerCase().match(/\.(mp4|webm|mov)$/) ? (
-                                            <div className="archive-video-wrapper">
-                                                <video src={memory.url} muted playsInline onMouseEnter={e => e.target.play()} onMouseLeave={e => { e.target.pause(); e.target.currentTime = 0; }} />
-                                                <div className="video-icon-tag"><Film size={12} /></div>
-                                            </div>
-                                        ) : (
-                                            <img src={memory.url} alt="Memory" loading="lazy" />
-                                        )}
-                                    </motion.div>
+                                memories.map((memory) => (
+                                    <LazyMedia key={memory.url} memory={memory} />
                                 ))
                             ) : (
                                 <div className="empty-archive">
