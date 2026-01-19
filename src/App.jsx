@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, X, Film, CheckCircle2, Image as ImageIcon, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Upload, X, Film, CheckCircle2, Image as ImageIcon, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, Maximize2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { upload } from '@vercel/blob/client';
 
 const MAX_FILE_SIZE = 5000 * 1024 * 1024; // 5GB
 
 // Optimization: Lazy Loading Component for Images and Videos
-const LazyMedia = ({ memory }) => {
+const LazyMedia = ({ memory, onClick }) => {
     const [isInView, setIsInView] = useState(false);
     const mediaRef = useRef(null);
 
@@ -18,7 +18,7 @@ const LazyMedia = ({ memory }) => {
                     observer.disconnect();
                 }
             },
-            { rootMargin: '200px' } // Load when 200px from viewport
+            { rootMargin: '200px' }
         );
 
         if (mediaRef.current) {
@@ -36,34 +36,101 @@ const LazyMedia = ({ memory }) => {
             className="archive-card"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
+            onClick={() => isInView && onClick(memory)}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
         >
             {!isInView ? (
                 <div className="archive-skeleton-static" />
             ) : (
-                isVideo ? (
-                    <div className="archive-video-wrapper">
-                        <video
+                <>
+                    {isVideo ? (
+                        <div className="archive-video-wrapper">
+                            <video
+                                src={memory.url}
+                                muted
+                                playsInline
+                                preload="none"
+                                onMouseEnter={e => e.target.play()}
+                                onMouseLeave={e => {
+                                    e.target.pause();
+                                    e.target.currentTime = 0;
+                                }}
+                            />
+                            <div className="video-icon-tag"><Film size={12} /></div>
+                        </div>
+                    ) : (
+                        <img
                             src={memory.url}
-                            muted
-                            playsInline
-                            preload="none" // Only load metadata/data on interaction
-                            onMouseEnter={e => e.target.play()}
-                            onMouseLeave={e => {
-                                e.target.pause();
-                                e.target.currentTime = 0;
-                            }}
+                            alt="Memory"
+                            loading="lazy"
+                            decoding="async"
                         />
-                        <div className="video-icon-tag"><Film size={12} /></div>
+                    )}
+                    <div className="card-overlay-hint">
+                        <Maximize2 size={16} color="white" />
                     </div>
-                ) : (
-                    <img
-                        src={memory.url}
-                        alt="Memory"
-                        loading="lazy"
-                        decoding="async"
-                    />
-                )
+                </>
             )}
+        </motion.div>
+    );
+};
+
+// Modal for Detailed View
+const MemoryModal = ({ memory, onClose }) => {
+    if (!memory) return null;
+
+    const isVideo = memory.url.toLowerCase().match(/\.(mp4|webm|mov)$/);
+
+    const handleDownload = async () => {
+        try {
+            const response = await fetch(memory.url);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = memory.pathname.split('/').pop() || 'memory-sekwang';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('Download failed:', error);
+            alert('다운로드 중 오류가 발생했습니다.');
+        }
+    };
+
+    return (
+        <motion.div
+            className="modal-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+        >
+            <motion.div
+                className="modal-content"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                onClick={e => e.stopPropagation()}
+            >
+                <button className="modal-close" onClick={onClose}><X size={24} /></button>
+
+                <div className="modal-media-container">
+                    {isVideo ? (
+                        <video src={memory.url} controls autoPlay playsInline />
+                    ) : (
+                        <img src={memory.url} alt="Full view" />
+                    )}
+                </div>
+
+                <div className="modal-footer">
+                    <button className="btn-download-full" onClick={handleDownload}>
+                        <Download size={18} /> 원본 저장하기
+                    </button>
+                </div>
+            </motion.div>
         </motion.div>
     );
 };
@@ -77,6 +144,7 @@ function App() {
     const [memories, setMemories] = useState([]);
     const [currentMemoryIndex, setCurrentMemoryIndex] = useState(0);
     const [loadingMemories, setLoadingMemories] = useState(true);
+    const [selectedMemory, setSelectedMemory] = useState(null);
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -299,7 +367,11 @@ function App() {
                                 memories
                                     .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
                                     .map((memory) => (
-                                        <LazyMedia key={memory.url} memory={memory} />
+                                        <LazyMedia
+                                            key={memory.url}
+                                            memory={memory}
+                                            onClick={setSelectedMemory}
+                                        />
                                     ))
                             ) : (
                                 <div className="empty-archive">
@@ -313,58 +385,59 @@ function App() {
                         {!loadingMemories && memories.length > ITEMS_PER_PAGE && (
                             <div className="pagination">
                                 <button
+                                    className="page-nav-btn"
                                     disabled={currentPage === 1}
                                     onClick={() => setCurrentPage(1)}
-                                    title="First Page"
                                 >
-                                    {"<<"}
+                                    <ChevronsLeft size={16} />
                                 </button>
                                 <button
+                                    className="page-nav-btn"
                                     disabled={currentPage === 1}
                                     onClick={() => setCurrentPage(prev => prev - 1)}
-                                    title="Previous Page"
                                 >
-                                    {"<"}
+                                    <ChevronLeft size={16} />
                                 </button>
 
-                                {Array.from({ length: Math.ceil(memories.length / ITEMS_PER_PAGE) }).map((_, i) => {
-                                    const pageNum = i + 1;
-                                    // Basic logic to show limited page numbers if there are too many
-                                    const totalPages = Math.ceil(memories.length / ITEMS_PER_PAGE);
-                                    if (
-                                        totalPages > 7 &&
-                                        pageNum !== 1 &&
-                                        pageNum !== totalPages &&
-                                        Math.abs(pageNum - currentPage) > 2
-                                    ) {
-                                        if (Math.abs(pageNum - currentPage) === 3) return <span key={pageNum}>...</span>;
-                                        return null;
-                                    }
+                                <div className="page-numbers">
+                                    {Array.from({ length: Math.ceil(memories.length / ITEMS_PER_PAGE) }).map((_, i) => {
+                                        const pageNum = i + 1;
+                                        const totalPages = Math.ceil(memories.length / ITEMS_PER_PAGE);
+                                        if (
+                                            totalPages > 5 &&
+                                            pageNum !== 1 &&
+                                            pageNum !== totalPages &&
+                                            Math.abs(pageNum - currentPage) > 1
+                                        ) {
+                                            if (Math.abs(pageNum - currentPage) === 2) return <span key={pageNum} className="pagination-ellipsis">...</span>;
+                                            return null;
+                                        }
 
-                                    return (
-                                        <button
-                                            key={pageNum}
-                                            className={currentPage === pageNum ? 'active' : ''}
-                                            onClick={() => setCurrentPage(pageNum)}
-                                        >
-                                            {pageNum}
-                                        </button>
-                                    );
-                                })}
+                                        return (
+                                            <button
+                                                key={pageNum}
+                                                className={`page-num ${currentPage === pageNum ? 'active' : ''}`}
+                                                onClick={() => setCurrentPage(pageNum)}
+                                            >
+                                                {pageNum}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
 
                                 <button
+                                    className="page-nav-btn"
                                     disabled={currentPage === Math.ceil(memories.length / ITEMS_PER_PAGE)}
                                     onClick={() => setCurrentPage(prev => prev + 1)}
-                                    title="Next Page"
                                 >
-                                    {">"}
+                                    <ChevronRight size={16} />
                                 </button>
                                 <button
+                                    className="page-nav-btn"
                                     disabled={currentPage === Math.ceil(memories.length / ITEMS_PER_PAGE)}
                                     onClick={() => setCurrentPage(Math.ceil(memories.length / ITEMS_PER_PAGE))}
-                                    title="Last Page"
                                 >
-                                    {">>"}
+                                    <ChevronsRight size={16} />
                                 </button>
                             </div>
                         )}
@@ -494,6 +567,13 @@ function App() {
             )}
 
             <AnimatePresence>
+                {selectedMemory && (
+                    <MemoryModal
+                        memory={selectedMemory}
+                        onClose={() => setSelectedMemory(null)}
+                    />
+                )}
+
                 {uploading && (
                     <motion.div
                         className="progress-overlay"
