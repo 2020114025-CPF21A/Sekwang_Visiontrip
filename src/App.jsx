@@ -8,10 +8,7 @@ const MAX_FILE_SIZE = 5000 * 1024 * 1024; // 5GB
 // Optimization: Lazy Loading Component for Images and Videos
 const LazyMedia = ({ memory, onClick }) => {
     const [isInView, setIsInView] = useState(false);
-    const [loadingProgress, setLoadingProgress] = useState(0);
-    const [isLoading, setIsLoading] = useState(false);
     const [isImageLoaded, setIsImageLoaded] = useState(false);
-    const [localUrl, setLocalUrl] = useState(null);
     const mediaRef = useRef(null);
 
     const isVideo = memory.url.toLowerCase().match(/\.(mp4|webm|mov)$/);
@@ -32,47 +29,6 @@ const LazyMedia = ({ memory, onClick }) => {
         return () => observer.disconnect();
     }, []);
 
-    useEffect(() => {
-        if (isInView && isVideo && !localUrl) {
-            const loadVideo = async () => {
-                setIsLoading(true);
-                try {
-                    const response = await fetch(memory.url);
-                    const reader = response.body.getReader();
-                    const contentLength = +response.headers.get('Content-Length');
-
-                    let receivedLength = 0;
-                    let chunks = [];
-
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-                        chunks.push(value);
-                        receivedLength += value.length;
-                        if (contentLength) {
-                            setLoadingProgress(Math.round((receivedLength / contentLength) * 100));
-                        }
-                    }
-
-                    const blob = new Blob(chunks);
-                    const url = URL.createObjectURL(blob);
-                    setLocalUrl(url);
-                } catch (error) {
-                    console.error('Video load failed:', error);
-                } finally {
-                    setIsLoading(false);
-                }
-            };
-            loadVideo();
-        }
-    }, [isInView, isVideo]);
-
-    useEffect(() => {
-        return () => {
-            if (localUrl) URL.revokeObjectURL(localUrl);
-        };
-    }, [localUrl]);
-
     return (
         <motion.div
             ref={mediaRef}
@@ -89,24 +45,18 @@ const LazyMedia = ({ memory, onClick }) => {
                 <>
                     {isVideo ? (
                         <div className="archive-video-wrapper">
-                            {isLoading ? (
-                                <div className="card-loader">
-                                    <div className="card-loader-percentage">{loadingProgress}%</div>
-                                    <div className="card-loader-bar" style={{ width: `${loadingProgress}%` }} />
-                                </div>
-                            ) : (
-                                <video
-                                    src={localUrl || memory.url}
-                                    muted
-                                    playsInline
-                                    loop
-                                    onMouseEnter={e => e.target.play()}
-                                    onMouseLeave={e => {
-                                        e.target.pause();
-                                        e.target.currentTime = 0;
-                                    }}
-                                />
-                            )}
+                            <video
+                                src={memory.url}
+                                muted
+                                playsInline
+                                loop
+                                preload="none"
+                                onMouseEnter={e => e.target.play()}
+                                onMouseLeave={e => {
+                                    e.target.pause();
+                                    e.target.currentTime = 0;
+                                }}
+                            />
                             <div className="video-icon-tag"><Film size={12} /></div>
                         </div>
                     ) : (
