@@ -1,14 +1,9 @@
 import { list } from '@vercel/blob';
 
-export const config = {
-    runtime: 'edge',
-};
-
-export default async function handler(request) {
+export default async function handler(request, response) {
     try {
         const { blobs } = await list();
 
-        // 이미지와 비디오 파일만 필터링 (Vercel Blob은 파일 확장자나 contentType을 제공함)
         const mediaFiles = blobs.filter(blob => {
             const url = blob.url.toLowerCase();
             return url.endsWith('.jpg') ||
@@ -21,18 +16,8 @@ export default async function handler(request) {
                 url.endsWith('.webm');
         });
 
-        return new Response(JSON.stringify(mediaFiles), {
-            status: 200,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
+        return response.status(200).json(mediaFiles);
     } catch (error) {
-        return new Response(JSON.stringify({ error: error.message }), {
-            status: 500,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
+        return response.status(500).json({ error: error.message });
     }
 }
