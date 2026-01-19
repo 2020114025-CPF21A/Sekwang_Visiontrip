@@ -75,26 +75,62 @@ const LazyMedia = ({ memory, onClick }) => {
 
 // Modal for Detailed View
 const MemoryModal = ({ memory, onClose }) => {
+    const [loadingProgress, setLoadingProgress] = useState(0);
+    const [isLoading, setIsLoading] = useState(true);
+    const [mediaUrl, setMediaUrl] = useState(null);
+
+    useEffect(() => {
+        if (!memory) return;
+
+        const loadMedia = async () => {
+            setIsLoading(true);
+            setLoadingProgress(0);
+            try {
+                const response = await fetch(memory.url);
+                const reader = response.body.getReader();
+                const contentLength = +response.headers.get('Content-Length');
+
+                let receivedLength = 0;
+                let chunks = [];
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    chunks.push(value);
+                    receivedLength += value.length;
+                    if (contentLength) {
+                        setLoadingProgress(Math.round((receivedLength / contentLength) * 100));
+                    }
+                }
+
+                const blob = new Blob(chunks);
+                const url = URL.createObjectURL(blob);
+                setMediaUrl(url);
+            } catch (error) {
+                console.error('Failed to load media:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadMedia();
+
+        return () => {
+            if (mediaUrl) URL.revokeObjectURL(mediaUrl);
+        };
+    }, [memory]);
+
     if (!memory) return null;
 
     const isVideo = memory.url.toLowerCase().match(/\.(mp4|webm|mov)$/);
 
-    const handleDownload = async () => {
-        try {
-            const response = await fetch(memory.url);
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = memory.pathname.split('/').pop() || 'memory-sekwang';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        } catch (error) {
-            console.error('Download failed:', error);
-            alert('다운로드 중 오류가 발생했습니다.');
-        }
+    const handleDownload = () => {
+        const a = document.createElement('a');
+        a.href = mediaUrl || memory.url;
+        a.download = memory.pathname.split('/').pop() || 'memory-sekwang';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     };
 
     return (
@@ -115,15 +151,32 @@ const MemoryModal = ({ memory, onClose }) => {
                 <button className="modal-close" onClick={onClose}><X size={24} /></button>
 
                 <div className="modal-media-container">
-                    {isVideo ? (
-                        <video src={memory.url} controls autoPlay playsInline />
+                    {isLoading ? (
+                        <div className="media-loader-overlay">
+                            <div className="loader-circle-container">
+                                <svg viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="45" className="loader-bg" />
+                                    <circle
+                                        cx="50" cy="50" r="45"
+                                        className="loader-fill"
+                                        style={{ strokeDasharray: 283, strokeDashoffset: 283 - (283 * loadingProgress) / 100 }}
+                                    />
+                                </svg>
+                                <div className="loader-percentage">{loadingProgress}%</div>
+                            </div>
+                            <p>미디어를 불러오는 중입니다...</p>
+                        </div>
                     ) : (
-                        <img src={memory.url} alt="Full view" />
+                        isVideo ? (
+                            <video src={mediaUrl} controls autoPlay playsInline />
+                        ) : (
+                            <img src={mediaUrl} alt="Full view" />
+                        )
                     )}
                 </div>
 
                 <div className="modal-footer">
-                    <button className="btn-download-full" onClick={handleDownload}>
+                    <button className="btn-download-full" onClick={handleDownload} disabled={isLoading}>
                         <Download size={18} /> 원본 저장하기
                     </button>
                 </div>
@@ -295,6 +348,13 @@ function App() {
     return (
         <div className="container">
             <header className="header">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="logo-container"
+                >
+                    <img src="/SekwangLogo.png" alt="Sekwang Logo" className="site-logo" />
+                </motion.div>
                 <motion.h1
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
