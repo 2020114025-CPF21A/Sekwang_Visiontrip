@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Upload, X, Film, CheckCircle2, Image as ImageIcon, Loader2, AlertCircle, FileText } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Upload, X, Film, CheckCircle2, Image as ImageIcon, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { upload } from '@vercel/blob/client';
 
@@ -10,9 +10,45 @@ function App() {
     const [uploading, setUploading] = useState(false);
     const [completed, setCompleted] = useState(false);
     const [globalError, setGlobalError] = useState(null);
+    const [memories, setMemories] = useState([]);
+    const [currentMemoryIndex, setCurrentMemoryIndex] = useState(0);
+    const [loadingMemories, setLoadingMemories] = useState(true);
 
     const [fileStatuses, setFileStatuses] = useState({});
     const fileInputRef = useRef(null);
+
+    // Fetch existing memories from Vercel Blob
+    useEffect(() => {
+        fetchMemories();
+    }, []);
+
+    const fetchMemories = async () => {
+        setLoadingMemories(true);
+        try {
+            const response = await fetch('/api/list');
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                // Shuffle memories for randomness
+                const shuffled = [...data].sort(() => Math.random() - 0.5);
+                setMemories(shuffled);
+            }
+        } catch (err) {
+            console.error('Failed to fetch memories:', err);
+        } finally {
+            setLoadingMemories(false);
+        }
+    };
+
+    // Auto-rotate slideshow
+    useEffect(() => {
+        if (memories.length <= 1) return;
+
+        const interval = setInterval(() => {
+            setCurrentMemoryIndex((prev) => (prev + 1) % memories.length);
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, [memories]);
 
     const handleFileChange = (e) => {
         const selectedFiles = Array.from(e.target.files);
@@ -101,6 +137,7 @@ function App() {
             setTimeout(() => {
                 setUploading(false);
                 setCompleted(true);
+                fetchMemories(); // Refresh the list after upload
             }, 800);
 
         } catch (error) {
@@ -141,6 +178,60 @@ function App() {
             </header>
 
             <main>
+                {/* Slideshow Section */}
+                <section className="slideshow-section">
+                    <AnimatePresence mode="wait">
+                        {loadingMemories ? (
+                            <motion.div
+                                key="loader"
+                                className="slideshow-placeholder"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                            >
+                                <Loader2 className="animate-spin" size={32} />
+                                <p>추억 불러오는 중...</p>
+                            </motion.div>
+                        ) : memories.length > 0 ? (
+                            <motion.div
+                                key={memories[currentMemoryIndex].url}
+                                className="slideshow-item"
+                                initial={{ opacity: 0, scale: 1.1 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                transition={{ duration: 1.5, ease: "easeInOut" }}
+                            >
+                                {memories[currentMemoryIndex].url.toLowerCase().match(/\.(mp4|webm|mov)$/) ? (
+                                    <video
+                                        src={memories[currentMemoryIndex].url}
+                                        autoPlay
+                                        muted
+                                        loop
+                                        playsInline
+                                    />
+                                ) : (
+                                    <img src={memories[currentMemoryIndex].url} alt="Memory" />
+                                )}
+                                <div className="slideshow-overlay"></div>
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                key="empty"
+                                className="slideshow-placeholder"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                            >
+                                <p>아직 저장된 추억이 없습니다.</p>
+                                <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>첫 번째 추억을 업로드해 보세요!</p>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                    <div className="slideshow-label">
+                        <ImageIcon size={14} style={{ marginRight: 6 }} />
+                        Memories Area
+                    </div>
+                </section>
+
                 {files.length === 0 ? (
                     <motion.div
                         className="upload-card"
@@ -151,9 +242,9 @@ function App() {
                             <Upload size={32} />
                         </div>
                         <div>
-                            <h3>사진 및 영상 선택</h3>
+                            <h3>새로운 추억 업로드</h3>
                             <p style={{ color: '#64748b', marginTop: '0.5rem', fontSize: '0.85rem' }}>
-                                파일당 최대 5GB까지 업로드할 수 있습니다.
+                                사진이나 영상을 선택해 주세요. (최대 5GB)
                             </p>
                         </div>
                         <button
