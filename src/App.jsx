@@ -10,6 +10,7 @@ const LazyMedia = ({ memory, onClick }) => {
     const [isInView, setIsInView] = useState(false);
     const [loadingProgress, setLoadingProgress] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
+    const [isImageLoaded, setIsImageLoaded] = useState(false);
     const [localUrl, setLocalUrl] = useState(null);
     const mediaRef = useRef(null);
 
@@ -109,12 +110,17 @@ const LazyMedia = ({ memory, onClick }) => {
                             <div className="video-icon-tag"><Film size={12} /></div>
                         </div>
                     ) : (
-                        <img
-                            src={memory.url}
-                            alt="Memory"
-                            loading="lazy"
-                            decoding="async"
-                        />
+                        <div className="archive-image-wrapper">
+                            {!isImageLoaded && <div className="archive-skeleton" style={{ position: 'absolute', inset: 0 }} />}
+                            <img
+                                src={memory.url}
+                                alt=""
+                                loading="lazy"
+                                decoding="async"
+                                style={{ opacity: isImageLoaded ? 1 : 0, transition: 'opacity 0.3s ease' }}
+                                onLoad={() => setIsImageLoaded(true)}
+                            />
+                        </div>
                     )}
                 </>
             )}
