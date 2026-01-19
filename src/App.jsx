@@ -401,7 +401,7 @@ function App() {
     const averageProgress = totalFiles > 0 ? Math.round(totalProgressSum / totalFiles) : 0;
 
     return (
-        <div className="container">
+        <div className="app-wrapper">
             <header className="header">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
@@ -425,186 +425,160 @@ function App() {
                 </motion.p>
             </header>
 
-            <nav className="tab-nav">
-                <button
-                    className={activeTab === 'archive' ? 'active' : ''}
-                    onClick={() => setActiveTab('archive')}
-                >
-                    추억 아카이브
-                </button>
-                <button
-                    className={activeTab === 'upload' ? 'active' : ''}
-                    onClick={() => setActiveTab('upload')}
-                >
-                    추억 업로드
-                </button>
-            </nav>
+            <div className="container">
 
-            <main>
-                {activeTab === 'archive' ? (
-                    <section className="archive-section">
-                        {/* Highlights Slideshow */}
-                        <div className="slideshow-container-mini">
-                            <AnimatePresence mode="wait">
+                <nav className="tab-nav">
+                    <button
+                        className={activeTab === 'archive' ? 'active' : ''}
+                        onClick={() => setActiveTab('archive')}
+                    >
+                        추억 아카이브
+                    </button>
+                    <button
+                        className={activeTab === 'upload' ? 'active' : ''}
+                        onClick={() => setActiveTab('upload')}
+                    >
+                        추억 업로드
+                    </button>
+                </nav>
+
+                <div className="tab-content">
+                    {activeTab === 'archive' ? (
+                        <section className="archive-section">
+                            {/* Highlights Slideshow */}
+                            <div className="slideshow-container-mini">
+                                <AnimatePresence mode="wait">
+                                    {loadingMemories ? (
+                                        <div className="slideshow-placeholder">
+                                            <Loader2 className="animate-spin" size={24} />
+                                        </div>
+                                    ) : memories.length > 0 ? (
+                                        <motion.div
+                                            key={memories[currentMemoryIndex].url}
+                                            className="slideshow-item-mini"
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            transition={{ duration: 1 }}
+                                        >
+                                            {memories[currentMemoryIndex].url.toLowerCase().match(/\.(mp4|webm|mov)$/) ? (
+                                                <video src={memories[currentMemoryIndex].url} autoPlay muted loop playsInline />
+                                            ) : (
+                                                <img src={memories[currentMemoryIndex].url} alt="Highlight" />
+                                            )}
+                                            <div className="slideshow-label-mini">Highlights</div>
+                                        </motion.div>
+                                    ) : null}
+                                </AnimatePresence>
+                            </div>
+
+                            <div className="archive-grid">
                                 {loadingMemories ? (
-                                    <div className="slideshow-placeholder">
-                                        <Loader2 className="animate-spin" size={24} />
-                                    </div>
-                                ) : memories.length > 0 ? (
-                                    <motion.div
-                                        key={memories[currentMemoryIndex].url}
-                                        className="slideshow-item-mini"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        transition={{ duration: 1 }}
-                                    >
-                                        {memories[currentMemoryIndex].url.toLowerCase().match(/\.(mp4|webm|mov)$/) ? (
-                                            <video src={memories[currentMemoryIndex].url} autoPlay muted loop playsInline />
-                                        ) : (
-                                            <img src={memories[currentMemoryIndex].url} alt="Highlight" />
-                                        )}
-                                        <div className="slideshow-label-mini">Highlights</div>
-                                    </motion.div>
-                                ) : null}
-                            </AnimatePresence>
-                        </div>
-
-                        <div className="archive-grid">
-                            {loadingMemories ? (
-                                Array(6).fill(0).map((_, i) => (
-                                    <div key={i} className="archive-skeleton" />
-                                ))
-                            ) : memories.length > 0 ? (
-                                memories
-                                    .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
-                                    .map((memory) => (
-                                        <LazyMedia
-                                            key={memory.url}
-                                            memory={memory}
-                                            onClick={setSelectedMemory}
-                                        />
+                                    Array(6).fill(0).map((_, i) => (
+                                        <div key={i} className="archive-skeleton" />
                                     ))
-                            ) : (
-                                <div className="empty-archive">
-                                    <p>아직 저장된 추억이 없습니다.</p>
-                                    <button onClick={() => setActiveTab('upload')}>첫 추억 업로드하기</button>
+                                ) : memories.length > 0 ? (
+                                    memories
+                                        .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+                                        .map((memory) => (
+                                            <LazyMedia
+                                                key={memory.url}
+                                                memory={memory}
+                                                onClick={setSelectedMemory}
+                                            />
+                                        ))
+                                ) : (
+                                    <div className="empty-archive">
+                                        <p>아직 저장된 추억이 없습니다.</p>
+                                        <button onClick={() => setActiveTab('upload')}>첫 추억 업로드하기</button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Pagination Controls */}
+                            {!loadingMemories && memories.length > ITEMS_PER_PAGE && (
+                                <div className="pagination">
+                                    <button
+                                        className="page-nav-btn"
+                                        disabled={currentPage === 1}
+                                        onClick={() => setCurrentPage(1)}
+                                    >
+                                        <ChevronsLeft size={16} />
+                                    </button>
+                                    <button
+                                        className="page-nav-btn"
+                                        disabled={currentPage === 1}
+                                        onClick={() => setCurrentPage(prev => prev - 1)}
+                                    >
+                                        <ChevronLeft size={16} />
+                                    </button>
+
+                                    <div className="page-numbers">
+                                        {Array.from({ length: Math.ceil(memories.length / ITEMS_PER_PAGE) }).map((_, i) => {
+                                            const pageNum = i + 1;
+                                            const totalPages = Math.ceil(memories.length / ITEMS_PER_PAGE);
+                                            if (
+                                                totalPages > 5 &&
+                                                pageNum !== 1 &&
+                                                pageNum !== totalPages &&
+                                                Math.abs(pageNum - currentPage) > 1
+                                            ) {
+                                                if (Math.abs(pageNum - currentPage) === 2) return <span key={pageNum} className="pagination-ellipsis">...</span>;
+                                                return null;
+                                            }
+
+                                            return (
+                                                <button
+                                                    key={pageNum}
+                                                    className={`page-num ${currentPage === pageNum ? 'active' : ''}`}
+                                                    onClick={() => setCurrentPage(pageNum)}
+                                                >
+                                                    {pageNum}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <button
+                                        className="page-nav-btn"
+                                        disabled={currentPage === Math.ceil(memories.length / ITEMS_PER_PAGE)}
+                                        onClick={() => setCurrentPage(prev => prev + 1)}
+                                    >
+                                        <ChevronRight size={16} />
+                                    </button>
+                                    <button
+                                        className="page-nav-btn"
+                                        disabled={currentPage === Math.ceil(memories.length / ITEMS_PER_PAGE)}
+                                        onClick={() => setCurrentPage(Math.ceil(memories.length / ITEMS_PER_PAGE))}
+                                    >
+                                        <ChevronsRight size={16} />
+                                    </button>
                                 </div>
                             )}
-                        </div>
-
-                        {/* Pagination Controls */}
-                        {!loadingMemories && memories.length > ITEMS_PER_PAGE && (
-                            <div className="pagination">
-                                <button
-                                    className="page-nav-btn"
-                                    disabled={currentPage === 1}
-                                    onClick={() => setCurrentPage(1)}
+                        </section>
+                    ) : (
+                        <section className="upload-section">
+                            {files.length === 0 ? (
+                                <motion.div
+                                    className="upload-card"
+                                    initial={{ scale: 0.9, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
                                 >
-                                    <ChevronsLeft size={16} />
-                                </button>
-                                <button
-                                    className="page-nav-btn"
-                                    disabled={currentPage === 1}
-                                    onClick={() => setCurrentPage(prev => prev - 1)}
-                                >
-                                    <ChevronLeft size={16} />
-                                </button>
-
-                                <div className="page-numbers">
-                                    {Array.from({ length: Math.ceil(memories.length / ITEMS_PER_PAGE) }).map((_, i) => {
-                                        const pageNum = i + 1;
-                                        const totalPages = Math.ceil(memories.length / ITEMS_PER_PAGE);
-                                        if (
-                                            totalPages > 5 &&
-                                            pageNum !== 1 &&
-                                            pageNum !== totalPages &&
-                                            Math.abs(pageNum - currentPage) > 1
-                                        ) {
-                                            if (Math.abs(pageNum - currentPage) === 2) return <span key={pageNum} className="pagination-ellipsis">...</span>;
-                                            return null;
-                                        }
-
-                                        return (
-                                            <button
-                                                key={pageNum}
-                                                className={`page-num ${currentPage === pageNum ? 'active' : ''}`}
-                                                onClick={() => setCurrentPage(pageNum)}
-                                            >
-                                                {pageNum}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-
-                                <button
-                                    className="page-nav-btn"
-                                    disabled={currentPage === Math.ceil(memories.length / ITEMS_PER_PAGE)}
-                                    onClick={() => setCurrentPage(prev => prev + 1)}
-                                >
-                                    <ChevronRight size={16} />
-                                </button>
-                                <button
-                                    className="page-nav-btn"
-                                    disabled={currentPage === Math.ceil(memories.length / ITEMS_PER_PAGE)}
-                                    onClick={() => setCurrentPage(Math.ceil(memories.length / ITEMS_PER_PAGE))}
-                                >
-                                    <ChevronsRight size={16} />
-                                </button>
-                            </div>
-                        )}
-                    </section>
-                ) : (
-                    <section className="upload-section">
-                        {files.length === 0 ? (
-                            <motion.div
-                                className="upload-card"
-                                initial={{ scale: 0.9, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                            >
-                                <div className="upload-icon-wrapper">
-                                    <Upload size={32} />
-                                </div>
-                                <div>
-                                    <h3>새로운 추억 업로드</h3>
-                                    <p style={{ color: '#64748b', marginTop: '0.5rem', fontSize: '0.85rem' }}>
-                                        사진이나 영상을 선택해 주세요. (최대 5GB)
-                                    </p>
-                                </div>
-                                <button
-                                    className="btn-upload"
-                                    onClick={() => fileInputRef.current.click()}
-                                >
-                                    파일 선택하기
-                                </button>
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    onChange={handleFileChange}
-                                    multiple
-                                    accept="image/*,video/*"
-                                    style={{ display: 'none' }}
-                                />
-                            </motion.div>
-                        ) : (
-                            <div style={{ paddingBottom: '120px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                    <h3 style={{ fontWeight: 600 }}>선택된 파일 ({files.length}개)</h3>
-                                    {!uploading && (
-                                        <button
-                                            onClick={() => fileInputRef.current.click()}
-                                            style={{
-                                                background: 'none',
-                                                border: 'none',
-                                                color: 'var(--primary)',
-                                                fontWeight: 600,
-                                                fontSize: '0.9rem',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            + 더 추가하기
-                                        </button>
-                                    )}
+                                    <div className="upload-icon-wrapper">
+                                        <Upload size={32} />
+                                    </div>
+                                    <div>
+                                        <h3>새로운 추억 업로드</h3>
+                                        <p style={{ color: '#64748b', marginTop: '0.5rem', fontSize: '0.85rem' }}>
+                                            사진이나 영상을 선택해 주세요. (최대 5GB)
+                                        </p>
+                                    </div>
+                                    <button
+                                        className="btn-upload"
+                                        onClick={() => fileInputRef.current.click()}
+                                    >
+                                        파일 선택하기
+                                    </button>
                                     <input
                                         type="file"
                                         ref={fileInputRef}
@@ -613,70 +587,98 @@ function App() {
                                         accept="image/*,video/*"
                                         style={{ display: 'none' }}
                                     />
-                                </div>
-
-                                <div className="preview-grid">
-                                    <AnimatePresence>
-                                        {files.map((file) => (
-                                            <motion.div
-                                                key={file.id}
-                                                className="preview-item"
-                                                layout
-                                                initial={{ opacity: 0, scale: 0.8 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                exit={{ opacity: 0, scale: 0.8 }}
+                                </motion.div>
+                            ) : (
+                                <div style={{ paddingBottom: '120px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                        <h3 style={{ fontWeight: 600 }}>선택된 파일 ({files.length}개)</h3>
+                                        {!uploading && (
+                                            <button
+                                                onClick={() => fileInputRef.current.click()}
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: 'var(--primary)',
+                                                    fontWeight: 600,
+                                                    fontSize: '0.9rem',
+                                                    cursor: 'pointer'
+                                                }}
                                             >
-                                                {file.type === 'image' ? (
-                                                    <img src={file.url} alt={file.name} />
-                                                ) : (
-                                                    <div style={{ width: '100%', height: '100%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                        <Film size={32} color="white" />
-                                                    </div>
-                                                )}
+                                                + 더 추가하기
+                                            </button>
+                                        )}
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            onChange={handleFileChange}
+                                            multiple
+                                            accept="image/*,video/*"
+                                            style={{ display: 'none' }}
+                                        />
+                                    </div>
 
-                                                {file.type === 'video' && <div className="video-badge"><Film size={12} style={{ marginRight: 4 }} /> Video</div>}
+                                    <div className="preview-grid">
+                                        <AnimatePresence>
+                                            {files.map((file) => (
+                                                <motion.div
+                                                    key={file.id}
+                                                    className="preview-item"
+                                                    layout
+                                                    initial={{ opacity: 0, scale: 0.8 }}
+                                                    animate={{ opacity: 1, scale: 1 }}
+                                                    exit={{ opacity: 0, scale: 0.8 }}
+                                                >
+                                                    {file.type === 'image' ? (
+                                                        <img src={file.url} alt={file.name} />
+                                                    ) : (
+                                                        <div style={{ width: '100%', height: '100%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                            <Film size={32} color="white" />
+                                                        </div>
+                                                    )}
 
-                                                {!uploading && (
-                                                    <button className="btn-remove" onClick={() => removeFile(file.id)}>
-                                                        <X size={14} />
-                                                    </button>
-                                                )}
+                                                    {file.type === 'video' && <div className="video-badge"><Film size={12} style={{ marginRight: 4 }} /> Video</div>}
 
-                                                {fileStatuses[file.id]?.status === 'uploading' && (
-                                                    <div className="item-progress-wrapper">
-                                                        <div
-                                                            className="item-progress-bar"
-                                                            style={{ width: `${fileStatuses[file.id].progress}%` }}
-                                                        ></div>
-                                                    </div>
-                                                )}
-                                                {fileStatuses[file.id]?.status === 'completed' && (
-                                                    <div className="item-status-overlay">
-                                                        <CheckCircle2 size={24} color="#10b981" />
-                                                    </div>
-                                                )}
-                                                {fileStatuses[file.id]?.status === 'error' && (
-                                                    <div className="item-status-overlay" style={{ background: 'rgba(239, 68, 68, 0.2)' }}>
-                                                        <AlertCircle size={24} color="#ef4444" />
-                                                    </div>
-                                                )}
-                                            </motion.div>
-                                        ))}
-                                    </AnimatePresence>
+                                                    {!uploading && (
+                                                        <button className="btn-remove" onClick={() => removeFile(file.id)}>
+                                                            <X size={14} />
+                                                        </button>
+                                                    )}
+
+                                                    {fileStatuses[file.id]?.status === 'uploading' && (
+                                                        <div className="item-progress-wrapper">
+                                                            <div
+                                                                className="item-progress-bar"
+                                                                style={{ width: `${fileStatuses[file.id].progress}%` }}
+                                                            ></div>
+                                                        </div>
+                                                    )}
+                                                    {fileStatuses[file.id]?.status === 'completed' && (
+                                                        <div className="item-status-overlay">
+                                                            <CheckCircle2 size={24} color="#10b981" />
+                                                        </div>
+                                                    )}
+                                                    {fileStatuses[file.id]?.status === 'error' && (
+                                                        <div className="item-status-overlay" style={{ background: 'rgba(239, 68, 68, 0.2)' }}>
+                                                            <AlertCircle size={24} color="#ef4444" />
+                                                        </div>
+                                                    )}
+                                                </motion.div>
+                                            ))}
+                                        </AnimatePresence>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-                    </section>
-                )}
-            </main>
-
-            {activeTab === 'upload' && files.length > 0 && !completed && !uploading && (
-                <div className="footer-actions">
-                    <button className="btn-submit" onClick={handleUpload}>
-                        {files.length}개의 파일 업로드
-                    </button>
+                            )}
+                        </section>
+                    )}
+                    {activeTab === 'upload' && files.length > 0 && !completed && !uploading && (
+                        <div className="footer-actions">
+                            <button className="btn-submit" onClick={handleUpload}>
+                                {files.length}개의 파일 업로드
+                            </button>
+                        </div>
+                    )}
                 </div>
-            )}
+            </div>
 
             <AnimatePresence>
                 {selectedMemory && (

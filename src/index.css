@@ -31,8 +31,12 @@ body {
 
 #root {
     width: 100%;
-    max-width: 600px;
-    margin: 0 auto;
+}
+
+.app-wrapper {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .container {
@@ -40,20 +44,22 @@ body {
     display: flex;
     flex-direction: column;
     gap: 2rem;
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
 }
 
 .header {
     position: relative;
     text-align: center;
-    padding: 3.5rem 1.5rem;
+    padding: 5rem 1.5rem 3rem;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.75rem;
-    border-radius: var(--radius-xl);
+    width: 100%;
     overflow: hidden;
-    margin-top: 1rem;
-    background: url('/header-bg.jpg') center/cover no-repeat;
+    background: url('/header-bg.jpg') center bottom 20% / cover no-repeat;
     box-shadow: var(--shadow-premium);
 }
 
