@@ -67,9 +67,6 @@ const LazyMedia = ({ memory, onClick }) => {
                             decoding="async"
                         />
                     )}
-                    <div className="card-overlay-hint">
-                        <Maximize2 size={16} color="white" />
-                    </div>
                 </>
             )}
         </motion.div>
