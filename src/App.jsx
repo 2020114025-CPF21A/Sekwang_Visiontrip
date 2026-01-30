@@ -160,7 +160,7 @@ function App() {
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
-    const ITEMS_PER_PAGE = 12; // 3 columns * 4 rows
+    const ITEMS_PER_PAGE = 48; // 12 columns * 4 rows
 
     const [fileStatuses, setFileStatuses] = useState({});
     const fileInputRef = useRef(null);
